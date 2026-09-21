@@ -93,8 +93,8 @@ document.getElementById("registerForm").addEventListener("submit", async (event)
   const errEl = document.getElementById("registerErr");
   errEl.textContent = "";
 
-  if (!shop || !email) { errEl.textContent = t("authErrRequired"); return; }
-  if (phone && !isValidLocalPhone(phone)) { errEl.textContent = t("authErrPhoneFormat"); return; }
+  if (!shop || !email || !phone) { errEl.textContent = t("authErrRequired"); return; }
+  if (!isValidLocalPhone(phone)) { errEl.textContent = t("authErrPhoneFormat"); return; }
   if (password.length < 6) { errEl.textContent = t("authErrPasswordLen"); return; }
   if (password !== password2) { errEl.textContent = t("authErrPasswordMismatch"); return; }
 
