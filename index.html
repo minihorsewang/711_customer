@@ -65,7 +65,7 @@
 
       <button type="button" class="btn-secondary auth-guest-btn" id="guestBtn" data-i18n="authGuestBtn">略過登入，直接預覽畫面</button>
 
-      <p class="auth-demo-hint" data-i18n="authDemoHint">示範原型：帳號資料僅存於本機瀏覽器，尚未串接正式後端。</p>
+      <p class="auth-demo-hint" data-i18n="authDemoHint">登入帳號後，資料會安全儲存在 Supabase 雲端；訪客預覽仍只存於本機。</p>
     </div>
   </div>
 
@@ -283,6 +283,8 @@
 
 <script src="i18n.js"></script>
 <script src="stores.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
 <script src="app.js"></script>
 <script src="auth.js"></script>
 </body>

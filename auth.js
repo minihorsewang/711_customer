@@ -1,96 +1,49 @@
-// ---------------------------------------------------------------------
-// Demo authentication (prototype only).
-// Accounts are stored in the browser's localStorage — there is no real
-// backend yet, so passwords are NOT securely hashed. This exists only
-// to demonstrate the multi-seller (multi-tenant) UX: each registered
-// shop gets its own isolated orders/customers/blacklist data via
-// startApp(sellerId) in app.js. A production build must replace this
-// with a real backend + proper password hashing (e.g. bcrypt) and
-// session tokens.
-// ---------------------------------------------------------------------
-
-const AUTH_USERS_KEY = "tdn_users";
-const AUTH_SESSION_KEY = "tdn_session";
-
-function loadUsers() {
-  try { return JSON.parse(localStorage.getItem(AUTH_USERS_KEY)) || []; }
-  catch (e) { return []; }
-}
-function saveUsers(users) {
-  localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(users));
-}
-
-// Not real security — just avoids storing raw passwords in plain text
-// for this client-only prototype.
-function simpleHash(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (Math.imul(31, hash) + str.charCodeAt(i)) | 0;
-  }
-  return String(hash);
-}
-
-function normalizeEmail(email) {
-  return email.trim().toLowerCase();
-}
-
-function findUser(email) {
-  return loadUsers().find(u => u.email === normalizeEmail(email));
-}
-
-function registerUser(shop, email, password) {
-  const users = loadUsers();
-  const normEmail = normalizeEmail(email);
-  if (users.some(u => u.email === normEmail)) {
-    return { ok: false, error: "exists" };
-  }
-  const user = {
-    id: "u" + Date.now(),
-    shop,
-    email: normEmail,
-    passwordHash: simpleHash(password),
-  };
-  users.push(user);
-  saveUsers(users);
-  return { ok: true, user };
-}
-
-function verifyLogin(email, password) {
-  const user = findUser(email);
-  if (!user) return { ok: false, error: "notfound" };
-  if (user.passwordHash !== simpleHash(password)) return { ok: false, error: "badpassword" };
-  return { ok: true, user };
-}
-
-function setSession(user) {
-  localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({ id: user.id, email: user.email, shop: user.shop }));
-}
-function getSession() {
-  try { return JSON.parse(localStorage.getItem(AUTH_SESSION_KEY)); }
-  catch (e) { return null; }
-}
-function clearSession() {
-  localStorage.removeItem(AUTH_SESSION_KEY);
-}
-
-// ---------- UI wiring ----------
+// Supabase Auth handles passwords and sessions. The browser only receives the
+// public publishable key; authorization is enforced by database RLS policies.
 const authScreen = document.getElementById("authScreen");
 const appRoot = document.getElementById("app");
 const userBadge = document.getElementById("userBadge");
-
-function enterApp(user) {
-  authScreen.style.display = "none";
-  appRoot.style.display = "block";
-  userBadge.textContent = `${user.shop} · ${user.email}`;
-  startApp(user.id);
-}
 
 function showAuthScreen() {
   appRoot.style.display = "none";
   authScreen.style.display = "flex";
 }
 
-// auth tabs (login / register)
+async function getOrCreateProfile(user, shopName = "") {
+  const fallbackShop = shopName || user.user_metadata?.shop_name || user.email?.split("@")[0] || "Seller";
+  const { data: existing, error: readError } = await supabaseClient
+    .from("profiles")
+    .select("shop_name")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (readError) throw readError;
+  if (existing) return existing;
+
+  const { data: created, error: createError } = await supabaseClient
+    .from("profiles")
+    .insert({ user_id: user.id, shop_name: fallbackShop })
+    .select("shop_name")
+    .single();
+
+  if (createError) throw createError;
+  return created;
+}
+
+async function enterApp(user, shopName = "") {
+  const profile = await getOrCreateProfile(user, shopName);
+  authScreen.style.display = "none";
+  appRoot.style.display = "block";
+  userBadge.textContent = `${profile.shop_name} · ${user.email}`;
+  await startApp(user.id);
+}
+
+function setFormBusy(form, busy) {
+  form.querySelectorAll("input, button").forEach(element => {
+    element.disabled = busy;
+  });
+}
+
 document.querySelectorAll(".auth-tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".auth-tab-btn").forEach(b => b.classList.remove("active"));
@@ -100,24 +53,30 @@ document.querySelectorAll(".auth-tab-btn").forEach(btn => {
   });
 });
 
-document.getElementById("loginForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const email = document.getElementById("login_email").value;
+document.getElementById("loginForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const email = document.getElementById("login_email").value.trim();
   const password = document.getElementById("login_password").value;
   const errEl = document.getElementById("loginErr");
   errEl.textContent = "";
+  setFormBusy(form, true);
 
-  const result = verifyLogin(email, password);
-  if (!result.ok) {
-    errEl.textContent = result.error === "notfound" ? t("authErrNotFound") : t("authErrBadPassword");
-    return;
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    await enterApp(data.user);
+  } catch (error) {
+    console.error("Supabase login failed", error);
+    errEl.textContent = t("authErrBadPassword");
+  } finally {
+    setFormBusy(form, false);
   }
-  setSession(result.user);
-  enterApp(result.user);
 });
 
-document.getElementById("registerForm").addEventListener("submit", (e) => {
-  e.preventDefault();
+document.getElementById("registerForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
   const shop = document.getElementById("reg_shop").value.trim();
   const email = document.getElementById("reg_email").value.trim();
   const password = document.getElementById("reg_password").value;
@@ -129,36 +88,65 @@ document.getElementById("registerForm").addEventListener("submit", (e) => {
   if (password.length < 6) { errEl.textContent = t("authErrPasswordLen"); return; }
   if (password !== password2) { errEl.textContent = t("authErrPasswordMismatch"); return; }
 
-  const result = registerUser(shop, email, password);
-  if (!result.ok) {
-    errEl.textContent = t("authErrExists");
+  setFormBusy(form, true);
+  try {
+    const emailRedirectTo = `${window.location.origin}${window.location.pathname}`;
+    const { data, error } = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo,
+        data: { shop_name: shop },
+      },
+    });
+    if (error) throw error;
+
+    if (!data.session) {
+      errEl.textContent = t("authConfirmEmail");
+      form.reset();
+      return;
+    }
+
+    toast(t("authRegisterSuccess"));
+    await enterApp(data.user, shop);
+  } catch (error) {
+    console.error("Supabase registration failed", error);
+    errEl.textContent = error?.message?.toLowerCase().includes("already")
+      ? t("authErrExists")
+      : t("authErrGeneral");
+  } finally {
+    setFormBusy(form, false);
+  }
+});
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  const { error } = await supabaseClient.auth.signOut();
+  if (error) {
+    console.error("Supabase logout failed", error);
+    toast(t("authErrGeneral"));
     return;
   }
-  setSession(result.user);
-  toast(t("authRegisterSuccess"));
-  enterApp(result.user);
-});
-
-document.getElementById("logoutBtn").addEventListener("click", () => {
-  clearSession();
   showAuthScreen();
 });
 
-// Guest preview: skip login entirely and jump straight into the app
-// with a fixed local demo account, so pages can be checked without
-// registering. Not a real session — logging out returns to auth screen.
-document.getElementById("guestBtn").addEventListener("click", () => {
-  const guestUser = { id: "guest", shop: t("authGuestShopName"), email: "guest@local" };
-  enterApp(guestUser);
+// Guest preview intentionally stays local and never writes demo data to cloud.
+document.getElementById("guestBtn").addEventListener("click", async () => {
+  authScreen.style.display = "none";
+  appRoot.style.display = "block";
+  userBadge.textContent = `${t("authGuestShopName")} · guest@local`;
+  await startApp("guest", { guest: true });
 });
 
-// ---------- boot ----------
-(function boot() {
-  const session = getSession();
-  if (session) {
-    const user = findUser(session.email);
-    if (user) { enterApp(user); return; }
-  }
+(async function boot() {
   applyI18n();
   showAuthScreen();
+
+  try {
+    const { data: { session }, error } = await supabaseClient.auth.getSession();
+    if (error) throw error;
+    if (session?.user) await enterApp(session.user);
+  } catch (error) {
+    console.error("Unable to restore Supabase session", error);
+    document.getElementById("loginErr").textContent = t("authErrGeneral");
+  }
 })();

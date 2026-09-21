@@ -1,37 +1,93 @@
-// ---------- storage helpers ----------
-// Each seller's data lives under its own key prefix (DB is rebuilt in
-// startApp() once we know who is logged in), so different accounts
-// never see each other's orders/customers/blacklist entries.
-let DB = { orders: "", customers: "", blacklist: "" };
-
-function load(key) {
-  try { return JSON.parse(localStorage.getItem(key)) || []; }
-  catch (e) { return []; }
-}
-function save(key, data) {
-  localStorage.setItem(key, JSON.stringify(data));
-}
+// ---------- data access ----------
+// Signed-in sellers use Supabase. Guest preview stays in localStorage so demo
+// data never enters the production database.
+let isGuestMode = false;
+let currentSellerId = null;
+const GUEST_DB = {
+  orders: "tdn_guest_orders",
+  customers: "tdn_guest_customers",
+  blacklist: "tdn_guest_blacklist",
+};
 
 let orders = [];
 let customers = [];
 let blacklist = [];
 
-// Called by auth.js right after a successful login/register, or on page
-// load if a session already exists.
-function startApp(sellerId) {
-  DB = {
-    orders: `tdn_${sellerId}_orders`,
-    customers: `tdn_${sellerId}_customers`,
-    blacklist: `tdn_${sellerId}_blacklist`,
-  };
-  orders = load(DB.orders);
-  customers = load(DB.customers);
-  blacklist = load(DB.blacklist);
+function loadGuest(key) {
+  try { return JSON.parse(localStorage.getItem(key)) || []; }
+  catch (error) { return []; }
+}
 
-  // seed a demo blacklist entry once per seller
-  if (blacklist.length === 0) {
-    blacklist = [{ phone: "0900000000", count: 3, note: "多次未取件" }];
-    save(DB.blacklist, blacklist);
+function saveGuest(key, data) {
+  localStorage.setItem(key, JSON.stringify(data));
+}
+
+function mapOrder(row) {
+  return {
+    id: Number(row.id),
+    name: row.receiver_name,
+    phone: row.phone,
+    store: row.store_code,
+    storeName: row.store_name,
+    storeAddr: row.store_address,
+    product: row.product,
+    amount: row.amount,
+    ship: row.shipping_fee,
+    note: row.note,
+    selected: false,
+    createdAt: new Date(row.created_at).toLocaleString(),
+  };
+}
+
+function mapCustomer(row) {
+  return {
+    id: Number(row.id),
+    name: row.name,
+    phone: row.phone,
+    store: row.store_code,
+    storeName: row.store_name,
+    storeAddr: row.store_address,
+  };
+}
+
+function mapBlacklist(row) {
+  return {
+    id: Number(row.id),
+    phone: row.phone,
+    count: row.report_count,
+    note: row.note,
+  };
+}
+
+async function loadCloudData() {
+  const [ordersResult, customersResult, blacklistResult] = await Promise.all([
+    supabaseClient.from("orders").select("*").order("created_at", { ascending: false }),
+    supabaseClient.from("customers").select("*").order("created_at", { ascending: false }),
+    supabaseClient.from("blacklist_reports").select("*").order("updated_at", { ascending: false }),
+  ]);
+
+  const firstError = ordersResult.error || customersResult.error || blacklistResult.error;
+  if (firstError) throw firstError;
+
+  orders = ordersResult.data.map(mapOrder);
+  customers = customersResult.data.map(mapCustomer);
+  blacklist = blacklistResult.data.map(mapBlacklist);
+}
+
+async function startApp(sellerId, options = {}) {
+  currentSellerId = sellerId;
+  isGuestMode = Boolean(options.guest);
+
+  if (isGuestMode) {
+    orders = loadGuest(GUEST_DB.orders);
+    customers = loadGuest(GUEST_DB.customers);
+    blacklist = loadGuest(GUEST_DB.blacklist);
+    if (blacklist.length === 0) {
+      blacklist = [{ id: Date.now(), phone: "0900000000", count: 3, note: "多次未取件" }];
+      saveGuest(GUEST_DB.blacklist, blacklist);
+    }
+  } else {
+    await loadCloudData();
   }
 
   applyI18n();
@@ -162,7 +218,7 @@ document.getElementById("f_phone").addEventListener("input", (e) => {
 });
 
 // ---------- create order form ----------
-document.getElementById("orderForm").addEventListener("submit", (e) => {
+document.getElementById("orderForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   clearErrors();
 
@@ -186,15 +242,43 @@ document.getElementById("orderForm").addEventListener("submit", (e) => {
     return;
   }
 
-  orders.unshift({
-    id: Date.now(),
-    ...data,
-    amount: Number(data.amount),
-    ship: Number(data.ship),
-    selected: false,
-    createdAt: new Date().toLocaleString(),
-  });
-  save(DB.orders, orders);
+  try {
+    if (isGuestMode) {
+      orders.unshift({
+        id: Date.now(),
+        ...data,
+        amount: Number(data.amount),
+        ship: Number(data.ship),
+        selected: false,
+        createdAt: new Date().toLocaleString(),
+      });
+      saveGuest(GUEST_DB.orders, orders);
+    } else {
+      const { data: created, error } = await supabaseClient
+        .from("orders")
+        .insert({
+          seller_id: currentSellerId,
+          receiver_name: data.name,
+          phone: data.phone,
+          store_code: data.store,
+          store_name: data.storeName,
+          store_address: data.storeAddr,
+          product: data.product,
+          amount: Number(data.amount),
+          shipping_fee: Number(data.ship),
+          note: data.note,
+        })
+        .select("*")
+        .single();
+      if (error) throw error;
+      orders.unshift(mapOrder(created));
+    }
+  } catch (error) {
+    console.error("Unable to create order", error);
+    toast(t("toastCloudError"));
+    return;
+  }
+
   renderOrders();
   toast(t("toastCreated"));
   e.target.reset();
@@ -206,7 +290,7 @@ document.getElementById("orderForm").addEventListener("submit", (e) => {
 });
 
 // ---------- save as customer ----------
-document.getElementById("saveCustomerBtn").addEventListener("click", () => {
+document.getElementById("saveCustomerBtn").addEventListener("click", async () => {
   const name = document.getElementById("f_name").value.trim();
   const phone = document.getElementById("f_phone").value.trim();
   const store = document.getElementById("f_store").value.trim();
@@ -215,8 +299,32 @@ document.getElementById("saveCustomerBtn").addEventListener("click", () => {
     toast(t("errNameLen"));
     return;
   }
-  customers.unshift({ id: Date.now(), name, phone, store, storeName });
-  save(DB.customers, customers);
+  try {
+    if (isGuestMode) {
+      customers.unshift({ id: Date.now(), name, phone, store, storeName, storeAddr: f_store.dataset.addr || "" });
+      saveGuest(GUEST_DB.customers, customers);
+    } else {
+      const { data: created, error } = await supabaseClient
+        .from("customers")
+        .insert({
+          seller_id: currentSellerId,
+          name,
+          phone,
+          store_code: store,
+          store_name: storeName,
+          store_address: f_store.dataset.addr || "",
+        })
+        .select("*")
+        .single();
+      if (error) throw error;
+      customers.unshift(mapCustomer(created));
+    }
+  } catch (error) {
+    console.error("Unable to save customer", error);
+    toast(t("toastCloudError"));
+    return;
+  }
+
   renderCustomers();
   renderQuickCustomers();
   toast(t("toastCustomerSaved"));
@@ -274,14 +382,26 @@ function renderOrders() {
     chk.addEventListener("change", () => {
       const id = Number(chk.dataset.id);
       const o = orders.find(x => x.id === id);
-      if (o) { o.selected = chk.checked; save(DB.orders, orders); }
+      if (o) o.selected = chk.checked;
     });
   });
   body.querySelectorAll(".del-order").forEach(btn => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const id = Number(btn.dataset.id);
-      orders = orders.filter(o => o.id !== id);
-      save(DB.orders, orders);
+      try {
+        if (isGuestMode) {
+          orders = orders.filter(o => o.id !== id);
+          saveGuest(GUEST_DB.orders, orders);
+        } else {
+          const { error } = await supabaseClient.from("orders").delete().eq("id", id);
+          if (error) throw error;
+          orders = orders.filter(o => o.id !== id);
+        }
+      } catch (error) {
+        console.error("Unable to delete order", error);
+        toast(t("toastCloudError"));
+        return;
+      }
       renderOrders();
       toast(t("toastDeleted"));
     });
@@ -291,7 +411,6 @@ function renderOrders() {
 document.getElementById("selectAllBtn").addEventListener("click", () => {
   const allSelected = orders.length > 0 && orders.every(o => o.selected);
   orders.forEach(o => o.selected = !allSelected);
-  save(DB.orders, orders);
   renderOrders();
 });
 
@@ -374,9 +493,22 @@ function renderCustomers() {
     });
   });
   body.querySelectorAll(".del-customer").forEach(btn => {
-    btn.addEventListener("click", () => {
-      customers = customers.filter(c => c.id !== Number(btn.dataset.id));
-      save(DB.customers, customers);
+    btn.addEventListener("click", async () => {
+      const id = Number(btn.dataset.id);
+      try {
+        if (isGuestMode) {
+          customers = customers.filter(c => c.id !== id);
+          saveGuest(GUEST_DB.customers, customers);
+        } else {
+          const { error } = await supabaseClient.from("customers").delete().eq("id", id);
+          if (error) throw error;
+          customers = customers.filter(c => c.id !== id);
+        }
+      } catch (error) {
+        console.error("Unable to delete customer", error);
+        toast(t("toastCloudError"));
+        return;
+      }
       renderCustomers();
       renderQuickCustomers();
       toast(t("toastDeleted"));
@@ -398,7 +530,7 @@ document.getElementById("blSearchBtn").addEventListener("click", () => {
   }
 });
 
-document.getElementById("blReportBtn").addEventListener("click", () => {
+document.getElementById("blReportBtn").addEventListener("click", async () => {
   const phone = document.getElementById("blr_phone").value.trim();
   const note = document.getElementById("blr_note").value.trim();
   if (!/^09\d{8}$/.test(phone)) {
@@ -406,13 +538,43 @@ document.getElementById("blReportBtn").addEventListener("click", () => {
     return;
   }
   const existing = blacklist.find(b => b.phone === phone);
-  if (existing) {
-    existing.count += 1;
-    if (note) existing.note = note;
-  } else {
-    blacklist.unshift({ phone, count: 1, note });
+  try {
+    if (isGuestMode) {
+      if (existing) {
+        existing.count += 1;
+        if (note) existing.note = note;
+      } else {
+        blacklist.unshift({ id: Date.now(), phone, count: 1, note });
+      }
+      saveGuest(GUEST_DB.blacklist, blacklist);
+    } else if (existing) {
+      const { data: updated, error } = await supabaseClient
+        .from("blacklist_reports")
+        .update({
+          report_count: existing.count + 1,
+          note: note || existing.note || "",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id)
+        .select("*")
+        .single();
+      if (error) throw error;
+      Object.assign(existing, mapBlacklist(updated));
+    } else {
+      const { data: created, error } = await supabaseClient
+        .from("blacklist_reports")
+        .insert({ seller_id: currentSellerId, phone, report_count: 1, note })
+        .select("*")
+        .single();
+      if (error) throw error;
+      blacklist.unshift(mapBlacklist(created));
+    }
+  } catch (error) {
+    console.error("Unable to report blacklist entry", error);
+    toast(t("toastCloudError"));
+    return;
   }
-  save(DB.blacklist, blacklist);
+
   renderBlacklistTable();
   document.getElementById("blr_phone").value = "";
   document.getElementById("blr_note").value = "";
@@ -437,4 +599,3 @@ function escapeHtml(str) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
-
