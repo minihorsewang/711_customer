@@ -306,13 +306,49 @@ th { color: var(--text-muted); font-weight: 600; font-size: 12.5px; text-transfo
 }
 .btn-logout:hover { background: rgba(255,255,255,0.15); }
 
-@media (max-width: 560px) {
-  .topbar-right { flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-  .user-badge { display: none; }
+/* ---------- responsive: tablet & below ---------- */
+@media (max-width: 720px) {
+  .content { padding: 14px 10px; }
+  .card { padding: 16px; }
+  .store-search-row { flex-direction: column; }
+  .store-search-row select { width: 100%; }
 }
 
+/* ---------- responsive: phone ---------- */
 @media (max-width: 560px) {
-  .row2 { grid-template-columns: 1fr; }
+  .topbar { flex-wrap: wrap; gap: 10px; padding: 12px 14px; }
+  .brand { font-size: 16px; }
+  .brand-icon { font-size: 19px; }
+  .topbar-right { flex-wrap: wrap; justify-content: flex-end; gap: 8px; width: 100%; }
+  .user-badge { display: none; }
+
   .tabs { padding: 8px 8px 0; }
   .tab-btn { padding: 8px 10px; font-size: 13px; }
+
+  .row2 { grid-template-columns: 1fr; }
+
+  .card-head { flex-direction: column; align-items: stretch; }
+  .card-actions { flex-direction: column; }
+  .card-actions .btn-primary, .card-actions .btn-secondary { width: 100%; }
+
+  .store-picker { flex-direction: column; }
+  .btn-map { justify-content: center; }
+
+  .form-actions { flex-direction: column-reverse; }
+  .form-actions .btn-primary, .form-actions .btn-secondary { width: 100%; }
+
+  table { font-size: 12.5px; }
+  th, td { padding: 8px 6px; }
+
+  .auth-box { padding: 22px 18px; }
+  .auth-brand { font-size: 17px; }
+
+  .modal-box { max-height: 88vh; }
+}
+
+/* ---------- responsive: very small phones ---------- */
+@media (max-width: 360px) {
+  .lang-btn { padding: 5px 9px; font-size: 12px; }
+  .btn-logout { padding: 5px 9px; font-size: 11.5px; }
+  .field.inline { flex-direction: column; }
 }
