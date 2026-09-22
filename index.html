@@ -314,21 +314,35 @@
       <div class="modal-head store-map-head">
         <div class="store-map-brand">
           <span class="store-map-logo">7-ELEVEN</span>
-          <span class="store-map-title" data-i18n="storeModalTitle">電子地圖查詢系統</span>
+          <div class="store-map-titles">
+            <span class="store-map-title" data-i18n="storeModalTitle">電子地圖查詢系統</span>
+            <span class="store-map-subtitle">E - Map</span>
+          </div>
         </div>
         <button type="button" class="modal-close" id="closeStorePicker">✕</button>
       </div>
 
       <div class="store-map-tabs">
-        <button type="button" class="store-map-tab active" data-storetab="street" data-i18n="storeTabStreet">街道名稱</button>
-        <button type="button" class="store-map-tab" data-storetab="name" data-i18n="storeTabName">門市名稱</button>
-        <button type="button" class="store-map-tab" data-storetab="code" data-i18n="storeTabCode">門市店號</button>
+        <button type="button" class="store-map-tab active" data-storetab="street">
+          <svg class="store-map-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 20 Q9 4 12 12 T19 4" stroke-linecap="round"/></svg>
+          <span data-i18n="storeTabStreet">街道名稱</span>
+        </button>
+        <button type="button" class="store-map-tab" data-storetab="name">
+          <svg class="store-map-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="5" width="14" height="15" rx="1.5"/><path d="M5 10h14M9 20v-6h6v6"/></svg>
+          <span data-i18n="storeTabName">門市名稱</span>
+        </button>
+        <button type="button" class="store-map-tab" data-storetab="code">
+          <svg class="store-map-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3.5" y="6" width="17" height="12" rx="1.5"/><text x="12" y="14" font-size="6" font-weight="700" fill="currentColor" stroke="none" text-anchor="middle">711</text></svg>
+          <span data-i18n="storeTabCode">門市店號</span>
+        </button>
       </div>
 
       <div class="modal-body">
         <!-- 街道名稱 (by street/city): pick a city, browse its stores -->
         <div class="store-panel active" id="storePanelStreet">
-          <p class="store-map-hint" id="storeStreetHint" data-i18n="storeCityPrompt">請選擇縣市</p>
+          <p class="store-map-warn-line" data-i18n="storeWarnLine1">取貨不付款取貨時，需出示與取件人相同的身分證明文件方可取件。</p>
+          <p class="store-map-warn-box" data-i18n="storeWarnLine2">7-ELEVEN門市全年無休(含假日)皆可到店取貨(除特定門市、或遇有不可抗力、特殊情事暫停服務)。</p>
+          <div class="store-map-section-bar" id="storeStreetHint" data-i18n="storeCityPrompt">請選擇縣市</div>
           <div class="store-city-grid" id="storeCityGrid"></div>
         </div>
 
