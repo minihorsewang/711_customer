@@ -291,13 +291,13 @@ tbody tr:hover { background: #FBFAFE; }
 /* ---------- store picker: styled after the official 7-ELEVEN e-map ---------- */
 .store-modal-box { max-width: 560px; }
 .store-map-head {
-  background: #1B4332;
+  background: #00863F;
   border-bottom: none;
   padding: 14px 16px;
 }
 .store-map-brand { display: flex; align-items: center; gap: 10px; }
 .store-map-logo {
-  background: #FF8A00;
+  background: #F26B21;
   color: white;
   font-weight: 800;
   font-size: 12px;
@@ -308,7 +308,7 @@ tbody tr:hover { background: #FBFAFE; }
 .store-map-title { color: white; font-size: 15px; font-weight: 700; }
 .store-map-head .modal-close { color: rgba(255,255,255,0.85); }
 
-.store-map-tabs { display: flex; background: #F1EDF9; border-bottom: 1px solid var(--border); }
+.store-map-tabs { display: flex; background: #FAFAFA; border-bottom: 1px solid var(--border); }
 .store-map-tab {
   flex: 1;
   background: none;
@@ -320,19 +320,19 @@ tbody tr:hover { background: #FBFAFE; }
   cursor: pointer;
   border-bottom: 3px solid transparent;
 }
-.store-map-tab.active { color: var(--primary-dark); border-bottom-color: var(--accent); background: white; }
+.store-map-tab.active { color: #00863F; border-bottom-color: #00863F; background: white; }
 
 .store-panel { display: none; }
 .store-panel.active { display: block; }
 
 .store-map-hint {
-  background: #FFF4E5;
-  color: #B45309;
-  border: 1px solid #FBCB8B;
+  background: #FDECEC;
+  color: #C81E1E;
+  border: 1px solid #F5B5B5;
   border-radius: var(--radius-sm);
   padding: 9px 13px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   margin: 0 0 14px;
 }
 
@@ -351,8 +351,8 @@ tbody tr:hover { background: #FBFAFE; }
   color: var(--text);
   cursor: pointer;
 }
-.store-city-btn:hover { background: var(--gradient-soft); border-color: var(--primary-light); }
-.store-city-btn.active { background: var(--gradient); color: white; border-color: transparent; }
+.store-city-btn:hover { background: #E8F5EE; border-color: #7FC8A0; }
+.store-city-btn.active { background: #00863F; color: white; border-color: transparent; }
 .store-city-btn.disabled {
   color: #CFC9DC;
   background: #F6F4FA;
