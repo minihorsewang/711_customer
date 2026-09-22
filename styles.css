@@ -96,6 +96,15 @@ body {
 .field input:focus { outline: none; border-color: var(--primary); }
 .err { color: var(--danger); font-size: 12.5px; min-height: 16px; }
 
+/* Vietnamese labels/inputs run larger and bolder (matches the reference
+   Tạo Đơn Nhanh app's mobile sizing) since diacritics get cramped otherwise. */
+html[lang="vi"] .field label { font-size: 15px; font-weight: 700; color: var(--text); }
+html[lang="vi"] .field input,
+html[lang="vi"] .field select { font-size: 17px; padding: 12px 14px; }
+html[lang="vi"] .btn-primary,
+html[lang="vi"] .btn-secondary { font-size: 15px; }
+html[lang="vi"] .card h2 { font-size: 19px; }
+
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
 .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
