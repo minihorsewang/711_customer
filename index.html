@@ -307,22 +307,51 @@
 
   <div id="toast" class="toast"></div>
 
-  <!-- ============ STORE PICKER MODAL ============ -->
+  <!-- ============ STORE PICKER MODAL (styled after the official 7-ELEVEN
+       electronic map: 街道名稱／門市名稱／門市店號 tabs + a city grid) ============ -->
   <div id="storeModal" class="modal-overlay" style="display:none;">
-    <div class="modal-box">
-      <div class="modal-head">
-        <h3 data-i18n="storeModalTitle">選擇 7-ELEVEN 門市</h3>
+    <div class="modal-box store-modal-box">
+      <div class="modal-head store-map-head">
+        <div class="store-map-brand">
+          <span class="store-map-logo">7-ELEVEN</span>
+          <span class="store-map-title" data-i18n="storeModalTitle">電子地圖查詢系統</span>
+        </div>
         <button type="button" class="modal-close" id="closeStorePicker">✕</button>
       </div>
 
+      <div class="store-map-tabs">
+        <button type="button" class="store-map-tab active" data-storetab="street" data-i18n="storeTabStreet">街道名稱</button>
+        <button type="button" class="store-map-tab" data-storetab="name" data-i18n="storeTabName">門市名稱</button>
+        <button type="button" class="store-map-tab" data-storetab="code" data-i18n="storeTabCode">門市店號</button>
+      </div>
+
       <div class="modal-body">
-        <div class="store-search-row">
-          <select id="storeCitySelect"></select>
-          <input type="text" id="storeKeyword" data-i18n-ph="phStoreKeyword">
+        <!-- 街道名稱 (by street/city): pick a city, browse its stores -->
+        <div class="store-panel active" id="storePanelStreet">
+          <p class="store-map-hint" id="storeStreetHint" data-i18n="storeCityPrompt">請選擇縣市</p>
+          <div class="store-city-grid" id="storeCityGrid"></div>
         </div>
 
+        <!-- 門市名稱 (by store name) -->
+        <div class="store-panel" id="storePanelName">
+          <div class="store-search-row">
+            <input type="text" id="storeNameInput" data-i18n-ph="phStoreNameSearch">
+            <button type="button" class="btn-primary" id="storeNameSearchBtn" data-i18n="btnSearch">查詢</button>
+          </div>
+          <div class="store-results" id="storeNameResults"></div>
+        </div>
+
+        <!-- 門市店號 (by store code) -->
+        <div class="store-panel" id="storePanelCode">
+          <div class="store-search-row">
+            <input type="text" id="storeCodeInput" inputmode="numeric" maxlength="6" data-i18n-ph="phStoreCodeSearch">
+            <button type="button" class="btn-primary" id="storeCodeSearchBtn" data-i18n="btnSearch">查詢</button>
+          </div>
+          <div class="store-results" id="storeCodeResults"></div>
+        </div>
+
+        <!-- Shared results list for the 街道名稱 flow, shown after picking a city -->
         <div class="store-results" id="storeResults"></div>
-        <p class="empty-hint" id="storeResultsEmpty" data-i18n="storeResultsEmpty">請選擇縣市或輸入關鍵字查詢</p>
       </div>
     </div>
   </div>

@@ -140,27 +140,31 @@ function clearErrors() {
 }
 
 // ---------- 7-11 store picker ----------
+// UI mirrors the official 7-ELEVEN electronic map (emap.pcsc.com.tw):
+// 街道名稱 (browse by city) / 門市名稱 (by store name) / 門市店號 (by code)
+// tabs. STORE_DB in stores.js is still demo data — see README for what a
+// real integration (ECPay's 門市電子地圖 API) requires.
 const storeModal = document.getElementById("storeModal");
-const storeCitySelect = document.getElementById("storeCitySelect");
-const storeKeyword = document.getElementById("storeKeyword");
 const storeResults = document.getElementById("storeResults");
-const storeResultsEmpty = document.getElementById("storeResultsEmpty");
 const storeConfirm = document.getElementById("storeConfirm");
 const f_store = document.getElementById("f_store");
 
-function populateCitySelect() {
-  storeCitySelect.innerHTML = `<option value="">${t("storeAllCities")}</option>` +
-    STORE_CITIES.map(c => `<option value="${c}">${c}</option>`).join("");
-}
+const storeCityGrid = document.getElementById("storeCityGrid");
+const storeStreetHint = document.getElementById("storeStreetHint");
+const storeNameInput = document.getElementById("storeNameInput");
+const storeNameResults = document.getElementById("storeNameResults");
+const storeCodeInput = document.getElementById("storeCodeInput");
+const storeCodeResults = document.getElementById("storeCodeResults");
 
-function renderStoreResults() {
-  const city = storeCitySelect.value;
-  const keyword = storeKeyword.value;
-  const results = searchStores({ city, keyword });
-  storeResults.innerHTML = "";
-  storeResultsEmpty.style.display = results.length === 0 ? "block" : "none";
-  storeResultsEmpty.textContent = results.length === 0 && (city || keyword) ? t("storeNoResults") : t("storeResultsEmpty");
-
+function renderStoreList(container, results, opts = {}) {
+  container.innerHTML = "";
+  if (results.length === 0) {
+    const p = document.createElement("p");
+    p.className = "empty-hint";
+    p.textContent = opts.emptyText || t("storeNoResults");
+    container.appendChild(p);
+    return;
+  }
   results.forEach(s => {
     const item = document.createElement("button");
     item.type = "button";
@@ -170,8 +174,35 @@ function renderStoreResults() {
       <div class="store-item-addr">${escapeHtml(s.addr)}</div>
     `;
     item.addEventListener("click", () => selectStore(s));
-    storeResults.appendChild(item);
+    container.appendChild(item);
   });
+}
+
+function populateCityGrid() {
+  storeCityGrid.innerHTML = "";
+  ALL_TAIWAN_CITIES.forEach(city => {
+    const hasData = STORE_CITIES.includes(city);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "store-city-btn" + (hasData ? "" : " disabled");
+    btn.textContent = city;
+    if (hasData) {
+      btn.addEventListener("click", () => selectCity(city));
+    } else {
+      btn.disabled = true;
+      btn.title = t("storeCityNoData");
+    }
+    storeCityGrid.appendChild(btn);
+  });
+}
+
+function selectCity(city) {
+  document.querySelectorAll(".store-city-btn").forEach(b => {
+    b.classList.toggle("active", b.textContent === city);
+  });
+  storeStreetHint.style.display = "none";
+  const results = searchStores({ city, keyword: "" });
+  renderStoreList(storeResults, results);
 }
 
 function selectStore(s) {
@@ -184,11 +215,40 @@ function selectStore(s) {
   closeModal();
 }
 
+function showStoreTab(name) {
+  document.querySelectorAll(".store-map-tab").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".store-panel").forEach(p => p.classList.remove("active"));
+  document.querySelector(`.store-map-tab[data-storetab="${name}"]`).classList.add("active");
+  document.getElementById("storePanel" + name.charAt(0).toUpperCase() + name.slice(1)).classList.add("active");
+}
+
+document.querySelectorAll(".store-map-tab").forEach(btn => {
+  btn.addEventListener("click", () => showStoreTab(btn.dataset.storetab));
+});
+
+document.getElementById("storeNameSearchBtn").addEventListener("click", () => {
+  renderStoreList(storeNameResults, searchStoresByName(storeNameInput.value));
+});
+storeNameInput.addEventListener("input", () => {
+  renderStoreList(storeNameResults, searchStoresByName(storeNameInput.value));
+});
+
+document.getElementById("storeCodeSearchBtn").addEventListener("click", () => {
+  renderStoreList(storeCodeResults, searchStoresByCode(storeCodeInput.value));
+});
+storeCodeInput.addEventListener("input", () => {
+  renderStoreList(storeCodeResults, searchStoresByCode(storeCodeInput.value));
+});
+
 function openModal() {
-  populateCitySelect();
-  storeCitySelect.value = "";
-  storeKeyword.value = "";
-  renderStoreResults();
+  populateCityGrid();
+  storeStreetHint.style.display = "block";
+  storeResults.innerHTML = "";
+  storeNameInput.value = "";
+  storeNameResults.innerHTML = "";
+  storeCodeInput.value = "";
+  storeCodeResults.innerHTML = "";
+  showStoreTab("street");
   storeModal.style.display = "flex";
 }
 function closeModal() {
@@ -200,8 +260,6 @@ f_store.addEventListener("click", openModal);
 f_store.addEventListener("focus", openModal);
 document.getElementById("closeStorePicker").addEventListener("click", closeModal);
 storeModal.addEventListener("click", (e) => { if (e.target === storeModal) closeModal(); });
-storeCitySelect.addEventListener("change", renderStoreResults);
-storeKeyword.addEventListener("input", renderStoreResults);
 
 // ---------- blacklist inline check while typing phone ----------
 document.getElementById("f_phone").addEventListener("input", (e) => {

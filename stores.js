@@ -6,6 +6,18 @@
 // picks a store on the official map. See README for integration notes.
 // ---------------------------------------------------------------------
 
+// Full list of Taiwan counties/cities, matching the layout of the real
+// 7-ELEVEN electronic map's city grid. Only a handful have demo stores in
+// STORE_DB below — the rest render as disabled buttons so the picker still
+// *looks* like the official map, without implying data we don't have.
+const ALL_TAIWAN_CITIES = [
+  "基隆市", "台北市", "新北市", "桃園市",
+  "新竹市", "新竹縣", "苗栗縣", "台中市",
+  "南投縣", "彰化縣", "嘉義市", "嘉義縣",
+  "台南市", "高雄市", "屏東縣", "宜蘭縣",
+  "花蓮縣", "台東縣", "澎湖縣", "金門縣", "連江縣",
+];
+
 const STORE_CITIES = ["台北市", "新北市", "桃園市", "台中市", "台南市", "高雄市"];
 
 const STORE_DB = [
@@ -34,6 +46,21 @@ function searchStores({ city, keyword }) {
     const matchKeyword = !kw || s.name.includes(kw) || s.addr.includes(kw) || s.code.includes(kw);
     return matchCity && matchKeyword;
   });
+}
+
+// Search by 門市名稱 keyword only (ignores address/code) — matches the
+// "門市名稱" tab on the official map.
+function searchStoresByName(keyword) {
+  const kw = (keyword || "").trim();
+  if (!kw) return [];
+  return STORE_DB.filter(s => s.name.includes(kw));
+}
+
+// Search by exact/partial 門市店號 — matches the "門市店號" tab.
+function searchStoresByCode(codeQuery) {
+  const q = (codeQuery || "").trim();
+  if (!q) return [];
+  return STORE_DB.filter(s => s.code.includes(q));
 }
 
 function findStoreByCode(code) {

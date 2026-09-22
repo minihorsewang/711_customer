@@ -242,6 +242,80 @@ th { color: var(--text-muted); font-weight: 600; font-size: 12.5px; text-transfo
 .store-item-name { font-weight: 600; font-size: 14px; color: var(--text); }
 .store-item-addr { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
 
+/* ---------- store picker: styled after the official 7-ELEVEN e-map ---------- */
+.store-modal-box { max-width: 560px; }
+.store-map-head {
+  background: var(--primary-dark);
+  border-bottom: none;
+  padding: 14px 16px;
+}
+.store-map-brand { display: flex; align-items: center; gap: 10px; }
+.store-map-logo {
+  background: #ff8a00;
+  color: white;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.store-map-title { color: white; font-size: 15px; font-weight: 700; }
+.store-map-head .modal-close { color: rgba(255,255,255,0.85); }
+
+.store-map-tabs { display: flex; background: #eef3f0; border-bottom: 1px solid var(--border); }
+.store-map-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 11px 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+}
+.store-map-tab.active { color: var(--primary-dark); border-bottom-color: var(--accent); background: white; }
+
+.store-panel { display: none; }
+.store-panel.active { display: block; }
+
+.store-map-hint {
+  background: #fff3e0;
+  color: #b45309;
+  border: 1px solid #f5c26b;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin: 0 0 14px;
+}
+
+.store-city-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.store-city-btn {
+  padding: 12px 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #fafcfb;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+.store-city-btn:hover { background: #eaf3ee; border-color: var(--primary); }
+.store-city-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+.store-city-btn.disabled {
+  color: #c3c9c6;
+  background: #f5f6f5;
+  cursor: not-allowed;
+}
+.store-city-btn.disabled:hover { background: #f5f6f5; border-color: var(--border); }
+
+.store-back-row { margin-bottom: 12px; }
+.store-back-btn { background: none; border: none; color: var(--primary); font-size: 13px; cursor: pointer; padding: 0; }
+
 /* ---------- auth screen ---------- */
 .auth-screen {
   min-height: 100vh;
@@ -344,6 +418,7 @@ th { color: var(--text-muted); font-weight: 600; font-size: 12.5px; text-transfo
   .card { padding: 16px; }
   .store-search-row { flex-direction: column; }
   .store-search-row select { width: 100%; }
+  .store-city-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 /* ---------- responsive: phone ---------- */
