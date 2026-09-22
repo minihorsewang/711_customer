@@ -26,6 +26,9 @@ function showAuthForm(name) {
   const tabBtn = document.querySelector(`.auth-tab-btn[data-authtab="${name}"]`);
   if (tabBtn) tabBtn.classList.add("active");
   document.getElementById(name + "Form").classList.add("active");
+  // "Sign in with Google" only makes sense on the login/register screens.
+  document.getElementById("googleAuthBlock").style.display =
+    (name === "forgot" || name === "reset") ? "none" : "block";
 }
 
 // Resolves a login identifier (email or local 09xxxxxxxx phone) to an email
@@ -212,6 +215,20 @@ document.getElementById("registerForm").addEventListener("submit", async (event)
   } finally {
     setFormBusy(form, false);
   }
+});
+
+document.getElementById("googleLoginBtn").addEventListener("click", async () => {
+  const redirectTo = `${window.location.origin}${window.location.pathname}`;
+  const { error } = await supabaseClient.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo },
+  });
+  if (error) {
+    console.error("Google sign-in failed", error);
+    toast(t("authErrGeneral"));
+  }
+  // On success the browser navigates away to Google's consent screen, then
+  // back to redirectTo with a session — boot() picks it up on reload.
 });
 
 document.getElementById("logoutBtn").addEventListener("click", async () => {
